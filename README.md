@@ -49,11 +49,14 @@ To configure the plugin settings, follow these steps:
 
 7. Next, scroll down to the '**Extra restrictions on attempts**' section.
 8. From the dropdown setting '**Hide questions on attempt**', select the option that says '**Hide the correct answered question in new attempt**'.
+9. To keep the question mark and feedback from your previous attempt on a hidden question, select the "**Auto grade the correct questions**" option in the "**Questions auto-grade**" dropdown setting.
 
-![extra_restrictionson_attempt](https://github.com/lmsace/moodle-hide-correct-questions/assets/98076459/27d9a37c-2094-41dc-a9c9-fd09e97e4b06)
+![hidecorrect-config](https://github.com/lmsace/moodle-hide-correct-questions/assets/57126778/4bb293e0-d5bc-4191-879c-797b214d7879)
 
-9. Save the quiz settings to apply the changes.
+ 
+10. Save the quiz settings to apply the changes.
 With these settings enabled, when a learner attempts the quiz again, the questions will be hidden, allowing them to reflect on their previous attempt and make improvements without directly seeing the correct answers.
+
 >Note: It's important to communicate these settings to your learners so they understand the behavior of the quiz and the purpose behind hiding the questions on subsequent attempts.
 
 ## Contributing
