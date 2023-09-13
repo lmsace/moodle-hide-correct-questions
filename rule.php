@@ -23,15 +23,13 @@
  * @copyright  2023 LMSACE Dev Team <lmsace.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->dirroot . '/mod/quiz/accessrule/accessrulebase.php');
+use mod_quiz\local\access_rule_base;
+use mod_quiz\quiz_settings;
 
 /**
  * Quiz access rule, helps to hide the correctly answered questions in previous attempt for new attempts.
  */
-class quizaccess_hidecorrect extends quiz_access_rule_base {
+class quizaccess_hidecorrect extends access_rule_base {
 
     /**
      * Enable the hide correct questions in new attempt.
@@ -54,7 +52,7 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
      * @param bool $canignoretimelimits
      * @return mixed
      */
-    public static function make(quiz $quizobj, $timenow, $canignoretimelimits) {
+    public static function make(quiz_settings $quizobj, $timenow, $canignoretimelimits) {
 
         // This access rule only works, if the Each attempt builds on the last is configured yes.
         if (!isset($quizobj->get_quiz()->attemptonlast) || !$quizobj->get_quiz()->attemptonlast) {
@@ -74,6 +72,7 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
      * @return void
      */
     public function setup_attempt_page($page) {
+
         if ($page->pagetype != 'mod-quiz-attempt') {
             return false;
         }
@@ -373,7 +372,12 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
         $DB->update_record('quiz_attempts', $attempt);
 
         if (!$quizattempt->is_preview() && $attempt->state == $quizattempt::FINISHED) {
-            quiz_save_best_grade($this->quiz);
+
+            if (method_exists('\mod_quiz\grade_calculator', 'recompute_final_grade')) {
+                \mod_quiz\grade_calculator::create($this->quizobj)->recompute_final_grade();
+            } else {
+                quiz_save_best_grade($this->quiz);
+            }
         }
 
         $transaction->allow_commit();
