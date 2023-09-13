@@ -17,6 +17,8 @@
 /**
  * Quiz access rule Implementation - quizaccess_hidecorrect.
  *
+ * * Included the autograde unchanged questions correctly answered in previous attempt.
+ *
  * @package    quizaccess_hidecorrect
  * @copyright  2023 LMSACE Dev Team <lmsace.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -87,7 +89,7 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
     public function user_last_finished_attempt() {
         global $USER;
         // Get this user's attempts.
-        $attempts = quiz_get_user_attempts($this->quiz->id, $USER->id, 'finished', true);
+        $attempts = quiz_get_user_attempts($this->quiz->id, $USER->id, 'finished', false);
         if (empty($attempts)) {
             return false;
         }
@@ -194,6 +196,13 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
         ];
         $mform->addElement('select', 'hidecorrect', get_string('hidecorrect', 'quizaccess_hidecorrect'), $options);
         $mform->addHelpButton('hidecorrect', 'hidecorrect', 'quizaccess_hidecorrect');
+
+        $options = [
+            self::DISABLE => get_string('disable'),
+            self::ENABLE => get_string('autogradeenable', 'quizaccess_hidecorrect'),
+        ];
+        $mform->addElement('select', 'hidecorrect_autograde', get_string('autograde', 'quizaccess_hidecorrect'), $options);
+        $mform->addHelpButton('hidecorrect_autograde', 'autograde', 'quizaccess_hidecorrect');
     }
 
     /**
@@ -205,7 +214,7 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
     public static function save_settings($quiz) {
         global $DB;
 
-        $data = (object) ['hidecorrect' => $quiz->hidecorrect];
+        $data = (object) ['hidecorrect' => $quiz->hidecorrect, 'autograde' => $quiz->hidecorrect_autograde];
 
         if ($record = $DB->get_record('quizaccess_hidecorrect', ['quizid' => $quiz->id])) {
             $data->id = $record->id;
@@ -249,9 +258,124 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
      */
     public static function get_settings_sql($quizid) {
         return array(
-            'hidecorrect', // Select field.
+            'hidecorrect, autograde as hidecorrect_autograde', // Select field.
             'LEFT JOIN {quizaccess_hidecorrect} hidecorrect ON hidecorrect.quizid = quiz.id', // Fetch join queyy.
             [] // Paramenters.
         );
+    }
+
+    /**
+     * Find the previous finished attempt of the user for this quiz.
+     *
+     * @param int $attemptid Current attempt id.
+     * @return stdclass|bool Return the user previous attempt object, otherwise false.
+     */
+    public function user_previous_finished_attempt($attemptid) {
+        global $USER;
+        // Get this user's attempts.
+        $attempts = quiz_get_user_attempts($this->quiz->id, $USER->id, 'finished', false);
+        if (empty($attempts)) {
+            return false;
+        }
+
+        $attempts = array_reverse($attempts);
+        $attempt = next($attempts);
+
+        return $attempt;
+    }
+
+    /**
+     * This is called when the current attempt at the quiz is finished.
+     * Update the previous attempt grades for the hidden questions.
+     *
+     * @return void
+     */
+    public function current_attempt_finished() {
+
+        // Verify the autograde is enabled.
+        if (!$this->quiz->{"hidecorrect_autograde"}) {
+            return true;
+        }
+
+        if ($attemptid = required_param('attempt', PARAM_INT)) {
+
+            $lastattempt = $this->user_previous_finished_attempt($attemptid);
+            if (!$lastattempt) {
+                return false;
+            }
+
+            // Make the current attempt instance.
+            $attemptobj = quiz_create_attempt_handling_errors($attemptid, $this->quizobj->get_cmid());
+            // Verify the attempt contains the manaual grading questions.
+            if ($attemptobj->requires_manual_grading()) {
+                // Load question usage instance for current attempt.
+                $quba = question_engine::load_questions_usage_by_activity($attemptobj->get_attempt()->uniqueid);
+                // Load question usage instance for previous attempt.
+                $prevquba = question_engine::load_questions_usage_by_activity($lastattempt->uniqueid);
+
+                foreach ($attemptobj->get_slots() as $slot) {
+                    $qa = $quba->get_question_attempt($slot);
+                    // Verify the question needs to be grade and it doesn't changed from previous attempt.
+                    if ($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2
+                        && $prevquba->get_question_state_string($slot, true) == 'Correct') {
+
+                        $comment = '';
+                        $prevgradeduser = '';
+                        $commentformat = '';
+                        $gradedmark = $prevquba->get_question_mark($slot); // Get grade of the question from previous attempt.
+                        $prevqa = $prevquba->get_question_attempt($slot); // Question attempt instance for this quetsion.
+
+                        foreach ($prevqa->get_step_iterator() as $step) {
+                            // Find the question is graded in previous attempt.
+                            if ($step->get_state()->is_commented()) {
+                                $prevgradeduser = $step->get_user_id(); // Fetch the graded user.
+                                $comment = $step->get_behaviour_var('comment'); // Fetch the comment for this question.
+                                $commentformat = $step->get_behaviour_var('commentformat');
+                            }
+                        }
+
+                        if ($prevgradeduser) {
+                            // This is the qustion is graded in previous attempt.
+                            // Then now use the same grades and comments for this attempt.
+                            $qa->manual_grade($comment, $gradedmark, $commentformat, null, $prevgradeduser);
+                            $quba->get_observer()->notify_attempt_modified($qa); // Create a step for manual grade.
+                        }
+
+                    }
+                }
+                // Finish the grading, update the total mark for this attempt.
+                $this->process_autograded_actions($quba, $attemptobj);
+            }
+        }
+    }
+
+    /**
+     * Store the final grade for this attempt and regrade the attempt.
+     *
+     * @param question_usage_by_activity $quba
+     * @param quiz_attempt $quizattempt
+     * @return void
+     */
+    public function process_autograded_actions($quba, $quizattempt) {
+        global $DB;
+
+        $transaction = $DB->start_delegated_transaction();
+
+        $timestamp = time();
+        question_engine::save_questions_usage_by_activity($quba);
+
+        $attempt = $quizattempt->get_attempt();
+        $attempt->timemodified = $timestamp;
+        if ($attempt->state == $quizattempt::FINISHED) {
+            $attempt->sumgrades = $quba->get_total_mark();
+        }
+
+        $DB->update_record('quiz_attempts', $attempt);
+
+        if (!$quizattempt->is_preview() && $attempt->state == $quizattempt::FINISHED) {
+            quiz_save_best_grade($this->quiz);
+        }
+
+        $transaction->allow_commit();
     }
 }

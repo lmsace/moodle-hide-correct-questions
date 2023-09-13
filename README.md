@@ -21,19 +21,19 @@ Git URL: https://github.com/lmsace/moodle-hide-correct-questions
 1. Download the '**hidecorrect**' from [GitHub releases](https://github.com/lmsace/moodle-hide-correct-questions/releases).
 2. Log in to Moodle as a Site Administrator.
 3. Go to '*Site Administration*' -> '*Plugins*' -> '*Upload Plugin*', On here upload the plugin zip '**hidecorrect.zip**'.
-4. Go to ‘Site administration’ -> ‘Notifications’ , here on ‘Plugins check’ page you will see the '*Hide Correct Questions on New Attempt*' '*Quiz / Access rules*' plugin in listing.
-5. Click the “Upgrade Moodle database now” button displayed on bottom of the page.
+4. Go to â€˜Site administrationâ€™ -> â€˜Notificationsâ€™ , here on â€˜Plugins checkâ€™ page you will see the '*Hide Correct Questions on New Attempt*' '*Quiz / Access rules*' plugin in listing.
+5. Click the â€œUpgrade Moodle database nowâ€ button displayed on bottom of the page.
 > You will get success message once the plugin installed successfully.
-6. By clicking “Continue” button on success page. you will redirect to the admin notification page.
+6. By clicking â€œContinueâ€ button on success page. you will redirect to the admin notification page.
 
 ### Installation steps using Git.
 
 1. Clone hidecorrect plugin Git repository into the folder '*mod / quiz / accessrule*'.
 2. Rename the folder name into '**hidecorrect**'.
-3. Go to ‘Site administration’ -> ‘Notifications’ , here on ‘Plugins check’ page you will see the '*Hide Correct Questions on New Attempt*' '*Quiz / Access rules*' plugin in listing.
-4. Click the “Upgrade Moodle database now” button displayed on bottom of the page.
+3. Go to â€˜Site administrationâ€™ -> â€˜Notificationsâ€™ , here on â€˜Plugins checkâ€™ page you will see the '*Hide Correct Questions on New Attempt*' '*Quiz / Access rules*' plugin in listing.
+4. Click the â€œUpgrade Moodle database nowâ€ button displayed on bottom of the page.
 > You will get success message once the plugin installed successfully.
-5. By clicking “Continue” button on success page. You will redirect to the admin notification page.
+5. By clicking â€œContinueâ€ button on success page. You will redirect to the admin notification page.
 
 ## Configuration
 To configure the plugin settings, follow these steps:
@@ -53,7 +53,7 @@ To configure the plugin settings, follow these steps:
 
 ![hidecorrect-config](https://github.com/lmsace/moodle-hide-correct-questions/assets/57126778/4bb293e0-d5bc-4191-879c-797b214d7879)
 
- 
+
 10. Save the quiz settings to apply the changes.
 With these settings enabled, when a learner attempts the quiz again, the questions will be hidden, allowing them to reflect on their previous attempt and make improvements without directly seeing the correct answers.
 
@@ -67,3 +67,11 @@ For support or assistance, please contact the plugin author or submit an issue t
 
 ## About
 This plugin was developed by [LMSACE](https://lmsace.com/). For more information, please visit our website or contact us directly.
+
+## Contributions
+
+LMSACE would like to thank these main contributors for their contirbutions
+
+1. Yuka (Shori) Kataoka, External Certified Japanese Language Instructor : Funding
+
+2. Maemoon Naseer, Founder and CEO of Aeorax : Funding

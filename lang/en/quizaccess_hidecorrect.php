@@ -29,3 +29,7 @@ $string['hidecorrect'] = 'Hide questions on attempt';
 $string['hidecorrect_help'] = 'Enabled, this plugin will hide questions in new attempts that were previously answered correctly.
 <b> NOTE: This only works when Each attempt builds on the last is configured yes for this quiz </b>';
 $string['privacy:metadata'] = 'The Hide Correct Questions on New Attempt quiz access rule plugin does not store any personal data.';
+// ... Autograde.
+$string['autogradeenable'] = 'Auto grade the correct questions';
+$string['autograde'] = 'Questions auto grade ';
+$string['autograde_help'] = 'Auto-grading applies the grades from the last attempt to correctly answered questions in the new attempt.';
