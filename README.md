@@ -5,9 +5,11 @@ This Moodle plugin allows teachers to hide questions that have been correctly an
 
 ### Version
 
-Plugin version: 1.0
+Plugin version: 2.0
 
 Released on: 14 JUNE 2023
+
+Upgraded on: 13 SEP 2023
 
 Authors: https://lmsace.com, LMSACE Dev Team
 
@@ -16,6 +18,7 @@ Authors: https://lmsace.com, LMSACE Dev Team
 Private Git Repository
 
 Git URL: https://github.com/lmsace/moodle-hide-correct-questions
+
 ### Installation steps using ZIP file.
 
 1. Download the '**hidecorrect**' from [GitHub releases](https://github.com/lmsace/moodle-hide-correct-questions/releases).
