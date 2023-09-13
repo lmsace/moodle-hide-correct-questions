@@ -34,7 +34,7 @@ function xmldb_quizaccess_hidecorrect_upgrade($oldversion) {
 
     $dbman = $DB->get_manager();
 
-    if ($oldversion < 2023061401) {
+    if ($oldversion < 2023091300) {
         // Add a new column 'autograde' to the hidecorrect table.
         $table = new xmldb_table('quizaccess_hidecorrect');
 
@@ -45,6 +45,8 @@ function xmldb_quizaccess_hidecorrect_upgrade($oldversion) {
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-        upgrade_plugin_savepoint(true, 2023061401, 'quizaccess', 'hidecorrect');
+        upgrade_plugin_savepoint(true, 2023091300, 'quizaccess', 'hidecorrect');
     }
+
+    return true;
 }
