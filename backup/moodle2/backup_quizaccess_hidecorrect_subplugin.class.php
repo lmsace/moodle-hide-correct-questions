@@ -47,10 +47,10 @@ class backup_quizaccess_hidecorrect_subplugin extends backup_mod_quiz_access_sub
         $subpluginwrapper = new backup_nested_element($this->get_recommended_name());
         $subplugin->add_child($subpluginwrapper);
 
-        $settings = new backup_nested_element('quizaccess_hidecorrect', null, array('hidecorrect', 'autograde'));
+        $settings = new backup_nested_element('quizaccess_hidecorrect', null, ['hidecorrect', 'autograde']);
         $subpluginwrapper->add_child($settings);
 
-        $settings->set_source_table('quizaccess_hidecorrect', array('quizid' => backup::VAR_ACTIVITYID));
+        $settings->set_source_table('quizaccess_hidecorrect', ['quizid' => backup::VAR_ACTIVITYID]);
 
         return $subplugin;
     }
