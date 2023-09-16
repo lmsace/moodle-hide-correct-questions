@@ -25,7 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'quizaccess_hidecorrect';
-$plugin->version = 2023091300;
-$plugin->requires = 2021051100;
+$plugin->version = 2023091402;
+$plugin->requires = 2023041400;
 $plugin->release = 'v2.0';
 $plugin->maturity = MATURITY_STABLE;
+$plugin->supported = [402, 402];

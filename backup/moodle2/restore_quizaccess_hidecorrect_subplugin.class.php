@@ -41,7 +41,7 @@ class restore_quizaccess_hidecorrect_subplugin extends restore_mod_quiz_access_s
      */
     protected function define_quiz_subplugin_structure() {
 
-        $paths = array();
+        $paths = [];
 
         $elename = $this->get_namefor('');
         $elepath = $this->get_pathfor('/quizaccess_hidecorrect');
