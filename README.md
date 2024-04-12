@@ -3,15 +3,13 @@
 ## Description
 This Moodle plugin allows teachers to hide questions that have been correctly answered in previous attempts. This can be useful in preventing students from seeing the correct answers and encourages them to attempt the questions again.
 
-**Enhanced Feature**: In addition to allowing teachers to hide previously answered questions, this Moodle plugin now enables automatic grading of correct answers in subsequent attempts. This ensures students only focus on revisiting and reattempting questions they haven't answered correctly before. This feature encourages more effective learning and review.
-
 ### Version
 
 Plugin version: 2.0
 
 Released on: 14 JUNE 2023
 
-Upgraded on: 16 SEP 2023
+Upgraded on: 13 SEP 2023
 
 Authors: https://lmsace.com, LMSACE Dev Team
 

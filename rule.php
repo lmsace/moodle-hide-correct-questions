@@ -126,8 +126,8 @@ class quizaccess_hidecorrect extends access_rule_base {
         if (!empty($slots)) {
             foreach ($slots as $slot) {
                 // Get the slot question previous attemp state as string in correctness. it return correct for completed questions.
-                $state = $quba->get_question_state_string($slot, true);
-                if ($state == 'Correct') {
+                $state = $quba->get_question_state($slot, true);
+                if ($state == question_state::$gradedright) {
                     $completed[] = $slot;
                     $completedquestions[] = $quba->get_question($slot)->id;
                 }
@@ -137,7 +137,7 @@ class quizaccess_hidecorrect extends access_rule_base {
         $completedquestions = [];
         foreach ($attemptobj->get_slots() as $slot) {
             $state = $quba->get_question_state_string($slot, true);
-            if ($state == 'Correct') {
+            if ($state == question_state::$gradedright) {
                 $completedquestions[] = $slot;
             }
         }
@@ -316,7 +316,7 @@ class quizaccess_hidecorrect extends access_rule_base {
                     $qa = $quba->get_question_attempt($slot);
                     // Verify the question needs to be grade and it doesn't changed from previous attempt.
                     if ($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2
-                        && $prevquba->get_question_state_string($slot, true) == 'Correct') {
+                        && $prevquba->get_question_state_string($slot, true) == question_state::$gradedright) {
 
                         $comment = '';
                         $prevgradeduser = '';
