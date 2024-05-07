@@ -29,4 +29,4 @@ $plugin->version = 2024041200;
 $plugin->requires = 2023041400;
 $plugin->release = 'v2.1';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->supported = [402, 402, 403];
+$plugin->supported = [402, 403];
