@@ -23,7 +23,7 @@
  */
 
 $string['pluginname'] = 'Hide Correct Questions on New Attempt';
-$string['pagequestioncompletes'] = 'Questions in this page are completed correctly in previous attempt, No need to attempt again.';
+$string['pagequestioncompletes'] = 'Questions in this page are completed correctly in previous attempt, no need to attempt again.';
 $string['hidecorrectenable'] = 'Hide the correct answered questions in new attempt';
 $string['hidecorrect'] = 'Hide questions on attempt';
 $string['hidecorrect_help'] = 'Enabled, this plugin will hide questions in new attempts that were previously answered correctly.
