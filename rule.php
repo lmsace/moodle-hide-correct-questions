@@ -214,7 +214,11 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
     public static function save_settings($quiz) {
         global $DB;
 
-        $data = (object) ['hidecorrect' => $quiz->hidecorrect, 'autograde' => $quiz->hidecorrect_autograde];
+        // Default values to false if hidecorrect property is undefined
+        $hidecorrect = $quiz->hidecorrect ?? false;
+        $autograde = $quiz->hidecorrect_autograde ?? false;
+
+        $data = (object) ['hidecorrect' => $hidecorrect, 'autograde' => $autograde];
 
         if ($record = $DB->get_record('quizaccess_hidecorrect', ['quizid' => $quiz->id])) {
             $data->id = $record->id;
