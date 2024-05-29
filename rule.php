@@ -44,10 +44,16 @@ class quizaccess_hidecorrect extends access_rule_base {
     public const DISABLE = 0;
 
     /**
+     * Hide the questions which is answered partialy correct.
+     * @var int
+     */
+    public const PARTIAL = 2;
+
+    /**
      * Verfiy the quiz is configured to hide the correct questions for new attempts,
      * Then create the accessrule instance for this class.
      *
-     * @param quiz $quizobj
+     * @param quiz_settings $quizobj
      * @param int $timenow
      * @param bool $canignoretimelimits
      * @return mixed
@@ -59,7 +65,8 @@ class quizaccess_hidecorrect extends access_rule_base {
             return null;
         }
 
-        if (isset($quizobj->get_quiz()->hidecorrect) && $quizobj->get_quiz()->hidecorrect == self::ENABLE) {
+        if (isset($quizobj->get_quiz()->hidecorrect) && $quizobj->get_quiz()->hidecorrect == self::ENABLE
+            || $quizobj->get_quiz()->hidecorrect == self::PARTIAL) {
             return new self($quizobj, $timenow);
         }
         return null;
@@ -123,13 +130,25 @@ class quizaccess_hidecorrect extends access_rule_base {
             $slots = $quba->get_slots();
         }
         $completed = $completedquestions = [];
+
+        // Hide partially correct questions.
+        $hidecorrect = $this->quiz->{"hidecorrect"} ?? self::ENABLE;
         if (!empty($slots)) {
             foreach ($slots as $slot) {
                 // Get the slot question previous attemp state as string in correctness. it return correct for completed questions.
                 $state = $quba->get_question_state($slot, true);
-                if ($state == question_state::$gradedright) {
-                    $completed[] = $slot;
-                    $completedquestions[] = $quba->get_question($slot)->id;
+                // Hide the questions answered paritialy correct.
+                if ($hidecorrect == self::PARTIAL) {
+                    if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
+                        || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
+                        $completed[] = $slot;
+                        $completedquestions[] = $quba->get_question($slot)->id;
+                    }
+                } else {
+                    if ($state == question_state::$mangrright || $state == question_state::$gradedright) {
+                        $completed[] = $slot;
+                        $completedquestions[] = $quba->get_question($slot)->id;
+                    }
                 }
             }
         }
@@ -137,15 +156,22 @@ class quizaccess_hidecorrect extends access_rule_base {
         $completedquestions = [];
         foreach ($attemptobj->get_slots() as $slot) {
             $state = $quba->get_question_state_string($slot, true);
-            if ($state == question_state::$gradedright) {
-                $completedquestions[] = $slot;
+            if ($hidecorrect == self::PARTIAL) {
+                if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
+                    || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
+                    $completedquestions[] = $slot;
+                }
+            } else {
+                if ($state == question_state::$mangrright || $state == question_state::$gradedright) {
+                    $completedquestions[] = $slot;
+                }
             }
         }
 
         // Redirect to next page, when the questions in the current page is answered and this page is not last page.
         if ((count($slots) == count($completed)) && !$attemptobj->is_last_page($page)) {
             $nextpage = new \moodle_url('/mod/quiz/attempt.php', [
-                'attempt' => $attemptid, 'cmid' => $this->quizobj->get_cmid(), 'page' => $page + 1
+                'attempt' => $attemptid, 'cmid' => $this->quizobj->get_cmid(), 'page' => $page + 1,
             ]);
             redirect($nextpage);
         }
@@ -192,6 +218,7 @@ class quizaccess_hidecorrect extends access_rule_base {
         $options = [
             self::DISABLE => get_string('disable'),
             self::ENABLE => get_string('hidecorrectenable', 'quizaccess_hidecorrect'),
+            self::PARTIAL => get_string('hidepartiallycorrect', 'quizaccess_hidecorrect')
         ];
         $mform->addElement('select', 'hidecorrect', get_string('hidecorrect', 'quizaccess_hidecorrect'), $options);
         $mform->addHelpButton('hidecorrect', 'hidecorrect', 'quizaccess_hidecorrect');
@@ -202,6 +229,8 @@ class quizaccess_hidecorrect extends access_rule_base {
         ];
         $mform->addElement('select', 'hidecorrect_autograde', get_string('autograde', 'quizaccess_hidecorrect'), $options);
         $mform->addHelpButton('hidecorrect_autograde', 'autograde', 'quizaccess_hidecorrect');
+        $mform->hideIf('hidecorrect_autograde', 'hidecorrect', 'eq', self::DISABLE);
+
     }
 
     /**
@@ -213,7 +242,14 @@ class quizaccess_hidecorrect extends access_rule_base {
     public static function save_settings($quiz) {
         global $DB;
 
-        $data = (object) ['hidecorrect' => $quiz->hidecorrect, 'autograde' => $quiz->hidecorrect_autograde];
+        // Default values to false if hidecorrect property is undefined.
+        $hidecorrect = $quiz->hidecorrect ?? false;
+        $autograde = $quiz->hidecorrect_autograde ?? false;
+
+        $data = (object) [
+            'hidecorrect' => $hidecorrect,
+            'autograde' => $autograde ?: 0,
+        ];
 
         if ($record = $DB->get_record('quizaccess_hidecorrect', ['quizid' => $quiz->id])) {
             $data->id = $record->id;
@@ -256,11 +292,11 @@ class quizaccess_hidecorrect extends access_rule_base {
      *        plugin name, to avoid collisions.
      */
     public static function get_settings_sql($quizid) {
-        return array(
+        return [
             'hidecorrect, autograde as hidecorrect_autograde', // Select field.
             'LEFT JOIN {quizaccess_hidecorrect} hidecorrect ON hidecorrect.quizid = quiz.id', // Fetch join queyy.
-            [] // Paramenters.
-        );
+            [], // Paramenters.
+        ];
     }
 
     /**
@@ -315,29 +351,46 @@ class quizaccess_hidecorrect extends access_rule_base {
                 foreach ($attemptobj->get_slots() as $slot) {
                     $qa = $quba->get_question_attempt($slot);
                     // Verify the question needs to be grade and it doesn't changed from previous attempt.
-                    if ($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2
-                        && $prevquba->get_question_state_string($slot, true) == question_state::$gradedright) {
+                    if ($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2) {
+                        // Get the previous question state.
+                        $prevqstate = $prevquba->get_question_state($slot, true);
+                        // Verifiy the hide partially correct questions has been graded automatically in the new attempt.
+                        $hidecorrect = $this->quiz->{"hidecorrect"};
+                        $result = false;
 
-                        $comment = '';
-                        $prevgradeduser = '';
-                        $commentformat = '';
-                        $gradedmark = $prevquba->get_question_mark($slot); // Get grade of the question from previous attempt.
-                        $prevqa = $prevquba->get_question_attempt($slot); // Question attempt instance for this quetsion.
-
-                        foreach ($prevqa->get_step_iterator() as $step) {
-                            // Find the question is graded in previous attempt.
-                            if ($step->get_state()->is_commented()) {
-                                $prevgradeduser = $step->get_user_id(); // Fetch the graded user.
-                                $comment = $step->get_behaviour_var('comment'); // Fetch the comment for this question.
-                                $commentformat = $step->get_behaviour_var('commentformat');
+                        if ($hidecorrect == self::PARTIAL) {
+                            if ($prevqstate == question_state::$gradedright || $prevqstate == question_state::$mangrright
+                                || $prevqstate == question_state::$mangrpartial || $prevqstate == question_state::$gradedpartial) {
+                                $result = true;
+                            }
+                        } else {
+                            if ($prevqstate == question_state::$gradedright || $prevqstate == question_state::$mangrright) {
+                                $result = true;
                             }
                         }
 
-                        if ($prevgradeduser) {
-                            // This is the qustion is graded in previous attempt.
-                            // Then now use the same grades and comments for this attempt.
-                            $qa->manual_grade($comment, $gradedmark, $commentformat, null, $prevgradeduser);
-                            $quba->get_observer()->notify_attempt_modified($qa); // Create a step for manual grade.
+                        if ($result) {
+                            $comment = '';
+                            $prevgradeduser = '';
+                            $commentformat = '';
+                            $gradedmark = $prevquba->get_question_mark($slot); // Get grade of the question from previous attempt.
+                            $prevqa = $prevquba->get_question_attempt($slot); // Question attempt instance for this quetsion.
+
+                            foreach ($prevqa->get_step_iterator() as $step) {
+                                // Find the question is graded in previous attempt.
+                                if ($step->get_state()->is_commented()) {
+                                    $prevgradeduser = $step->get_user_id(); // Fetch the graded user.
+                                    $comment = $step->get_behaviour_var('comment'); // Fetch the comment for this question.
+                                    $commentformat = $step->get_behaviour_var('commentformat');
+                                }
+                            }
+
+                            if ($prevgradeduser) {
+                                // This is the qustion is graded in previous attempt.
+                                // Then now use the same grades and comments for this attempt.
+                                $qa->manual_grade($comment, $gradedmark, $commentformat, null, $prevgradeduser);
+                                $quba->get_observer()->notify_attempt_modified($qa); // Create a step for manual grade.
+                            }
                         }
 
                     }

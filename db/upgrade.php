@@ -47,6 +47,5 @@ function xmldb_quizaccess_hidecorrect_upgrade($oldversion) {
         }
         upgrade_plugin_savepoint(true, 2023091400, 'quizaccess', 'hidecorrect');
     }
-
     return true;
 }

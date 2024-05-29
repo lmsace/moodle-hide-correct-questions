@@ -33,3 +33,5 @@ $string['privacy:metadata'] = 'The Hide Correct Questions on New Attempt quiz ac
 $string['autogradeenable'] = 'Auto grade the correct questions';
 $string['autograde'] = 'Questions auto grade ';
 $string['autograde_help'] = 'Auto-grading applies the grades from the last attempt to correctly answered questions in the new attempt.';
+// ... Hide partially correct.
+$string['hidepartiallycorrect'] = 'Hide the correct and partially correct answered questions on reattempt';
