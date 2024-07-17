@@ -301,7 +301,7 @@ class quizaccess_hidecorrect extends quiz_access_rule_base {
             return true;
         }
 
-        if ($attemptid = required_param('attempt', PARAM_INT)) {
+        if ($attemptid = optional_param('attempt', 0 , PARAM_INT)) {
 
             $lastattempt = $this->user_previous_finished_attempt($attemptid);
             if (!$lastattempt) {
