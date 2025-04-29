@@ -23,15 +23,15 @@
  */
 
 $string['pluginname'] = 'Hide Correct Questions on New Attempt';
-$string['pagequestioncompletes'] = 'Questions in this page are completed correctly in previous attempt, no need to attempt again.';
-$string['hidecorrectenable'] = 'Hide the correct answered questions in new attempt';
-$string['hidecorrect'] = 'Hide questions on attempt';
-$string['hidecorrect_help'] = 'Enabled, this plugin will hide questions in new attempts that were previously answered correctly.
-<b> NOTE: This only works when Each attempt builds on the last is configured yes for this quiz </b>';
+$string['pagequestioncompletes'] = '<b>All questions in this quiz have been answered correctly in a previous attempt. There is no need to attempt the quiz again.</b>';
+$string['hidecorrectenable'] = 'Hide correctly answered questions in a new attempt';
+$string['hidecorrect'] = 'Hide certain questions on attempt';
+$string['hidecorrect_help'] = 'When enabled, hide questions that were previously answered correctly in new attempts.
+<b> NOTE: This only works when the setting \'Each attempt builds on the last\' under \'Question behaviour\' is enabled for this quiz </b>';
 $string['privacy:metadata'] = 'The Hide Correct Questions on New Attempt quiz access rule plugin does not store any personal data.';
 // ... Autograde.
-$string['autogradeenable'] = 'Auto grade the correct questions';
-$string['autograde'] = 'Questions auto grade ';
+$string['autogradeenable'] = 'Auto-grade the correct questions';
+$string['autograde'] = 'Questions auto-grade ';
 $string['autograde_help'] = 'Auto-grading applies the grades from the last attempt to correctly answered questions in the new attempt.';
 // ... Hide partially correct.
-$string['hidepartiallycorrect'] = 'Hide the correct and partially correct answered questions on reattempt';
+$string['hidepartiallycorrect'] = 'Hide questions that have been correctly answered <b>AND</b> partially correctly answered in new attempts';
