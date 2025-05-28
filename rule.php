@@ -125,10 +125,83 @@ class quizaccess_hidecorrect extends access_rule_base {
         // Get list of slots avialble in quiz.
         // Get the list of questions needed by this page.
         $page = optional_param('page', 0, PARAM_INT);
+
         $slots = $attemptobj->get_slots($page);
         if (empty($slots)) {
             $slots = $quba->get_slots();
         }
+
+        // Verify the slots are completed.
+        list($hasincompletequestions, $completed) = $this->is_page_has_incomplete_questions($page, $attemptobj, $quba);
+
+        // Hide partially correct questions.
+        $hidecorrect = $this->quiz->{"hidecorrect"} ?? self::ENABLE;
+
+        $completedquestions = [];
+        foreach ($attemptobj->get_slots() as $slot) {
+            $state = $quba->get_question_state_string($slot, true);
+            if ($hidecorrect == self::PARTIAL) {
+                if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
+                    || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
+                    $completedquestions[] = $slot;
+                }
+            } else {
+                if ($state == question_state::$mangrright || $state == question_state::$gradedright) {
+                    $completedquestions[] = $slot;
+                }
+            }
+        }
+
+        // Redirect to next page, when the questions in the current page is answered and this page is not last page.
+        if (!$hasincompletequestions) {
+
+            // Find the next page that contains any incomplete questions.
+            $totalpages = $attemptobj->get_num_pages();
+            $nextpage = null;
+            for ($p = $page + 1; $p < $totalpages; $p++) {
+                $hasincomplete = $this->is_page_has_incomplete_questions($p, $attemptobj, $quba)[0];
+                if ($hasincomplete) {
+                    $nextpage = new \moodle_url('/mod/quiz/attempt.php', [
+                        'attempt' => $attemptid,
+                        'cmid' => $this->quizobj->get_cmid(),
+                        'page' => $p,
+                    ]);
+                    break;
+                }
+
+                $attemptobj->set_currentpage($p);
+            }
+
+            if (is_null($nextpage)) {
+                // If there is no next page with incomplete questions, redirect to the summary page.
+                $nextpage = $attemptobj->summary_url();
+            }
+            // Redirect to the next page.
+            redirect($nextpage);
+        }
+
+        $uniqueid = $attemptobj->get_attempt()->uniqueid;
+        $PAGE->requires->js_call_amd('quizaccess_hidecorrect/hidecorrect', 'init',  [$completed, $uniqueid, $completedquestions]);
+
+        $this->generate_dynamic_css($completed, $uniqueid);
+    }
+
+    /**
+     * Check the current page has any incomplete questions, if yes then return the list of completed questions.
+     *
+     * @param int $page Current page number.
+     * @param quiz_attempt $attemptobj Current attempt object.
+     * @param question_usage_by_activity $quba Question usage instance for this attempt.
+     * @return array List of completed questions and question ids.
+     */
+    protected function is_page_has_incomplete_questions($page, $attemptobj, $quba) {
+
+        $slots = $attemptobj->get_slots($page);
+
+        if (empty($slots)) {
+            $slots = $quba->get_slots();
+        }
+
         $completed = $completedquestions = [];
 
         // Hide partially correct questions.
@@ -153,33 +226,9 @@ class quizaccess_hidecorrect extends access_rule_base {
             }
         }
 
-        $completedquestions = [];
-        foreach ($attemptobj->get_slots() as $slot) {
-            $state = $quba->get_question_state_string($slot, true);
-            if ($hidecorrect == self::PARTIAL) {
-                if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
-                    || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
-                    $completedquestions[] = $slot;
-                }
-            } else {
-                if ($state == question_state::$mangrright || $state == question_state::$gradedright) {
-                    $completedquestions[] = $slot;
-                }
-            }
-        }
+        $hasincompletequestions = (count($slots) > count($completed));
 
-        // Redirect to next page, when the questions in the current page is answered and this page is not last page.
-        if ((count($slots) == count($completed)) && !$attemptobj->is_last_page($page)) {
-            $nextpage = new \moodle_url('/mod/quiz/attempt.php', [
-                'attempt' => $attemptid, 'cmid' => $this->quizobj->get_cmid(), 'page' => $page + 1,
-            ]);
-            redirect($nextpage);
-        }
-
-        $uniqueid = $attemptobj->get_attempt()->uniqueid;
-        $PAGE->requires->js_call_amd('quizaccess_hidecorrect/hidecorrect', 'init',  [$completed, $uniqueid, $completedquestions]);
-
-        $this->generate_dynamic_css($completed, $uniqueid);
+        return [$hasincompletequestions, $completed];
     }
 
     /**
@@ -332,7 +381,7 @@ class quizaccess_hidecorrect extends access_rule_base {
             return true;
         }
 
-        if ($attemptid = required_param('attempt', PARAM_INT)) {
+        if ($attemptid = optional_param('attempt', 0 , PARAM_INT)) {
 
             $lastattempt = $this->user_previous_finished_attempt($attemptid);
             if (!$lastattempt) {
