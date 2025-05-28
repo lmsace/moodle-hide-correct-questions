@@ -154,6 +154,7 @@ class quizaccess_hidecorrect extends access_rule_base {
 
         // Redirect to next page, when the questions in the current page is answered and this page is not last page.
         if (!$hasincompletequestions) {
+            $attemptobj->set_currentpage($page);
 
             // Find the next page that contains any incomplete questions.
             $totalpages = $attemptobj->get_num_pages();
@@ -168,7 +169,6 @@ class quizaccess_hidecorrect extends access_rule_base {
                     ]);
                     break;
                 }
-
                 $attemptobj->set_currentpage($p);
             }
 
@@ -391,18 +391,24 @@ class quizaccess_hidecorrect extends access_rule_base {
             // Make the current attempt instance.
             $attemptobj = quiz_create_attempt_handling_errors($attemptid, $this->quizobj->get_cmid());
             // Verify the attempt contains the manaual grading questions.
-            if ($attemptobj->requires_manual_grading()) {
+            // if ($attemptobj->requires_manual_grading()) {
                 // Load question usage instance for current attempt.
                 $quba = question_engine::load_questions_usage_by_activity($attemptobj->get_attempt()->uniqueid);
                 // Load question usage instance for previous attempt.
                 $prevquba = question_engine::load_questions_usage_by_activity($lastattempt->uniqueid);
 
+                $attempthasmanualgrade = false;
                 foreach ($attemptobj->get_slots() as $slot) {
                     $qa = $quba->get_question_attempt($slot);
                     // Verify the question needs to be grade and it doesn't changed from previous attempt.
-                    if ($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2) {
-                        // Get the previous question state.
-                        $prevqstate = $prevquba->get_question_state($slot, true);
+                    // echo '<pre>'; print_r($qa);
+                    // $prevqstate = $prevquba->get_question_state($slot, true);
+                    // Get the previous question state.
+                    $prevqstate = $prevquba->get_question_state($slot, true);
+
+                    if (($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2)
+                        || $prevqstate == question_state::$mangrright) {
+
                         // Verifiy the hide partially correct questions has been graded automatically in the new attempt.
                         $hidecorrect = $this->quiz->{"hidecorrect"};
                         $result = false;
@@ -435,6 +441,7 @@ class quizaccess_hidecorrect extends access_rule_base {
                             }
 
                             if ($prevgradeduser) {
+                                $attempthasmanualgrade = true;
                                 // This is the qustion is graded in previous attempt.
                                 // Then now use the same grades and comments for this attempt.
                                 $qa->manual_grade($comment, $gradedmark, $commentformat, null, $prevgradeduser);
@@ -445,8 +452,10 @@ class quizaccess_hidecorrect extends access_rule_base {
                     }
                 }
                 // Finish the grading, update the total mark for this attempt.
-                $this->process_autograded_actions($quba, $attemptobj);
-            }
+                if ($attempthasmanualgrade) {
+                    $this->process_autograded_actions($quba, $attemptobj);
+                }
+            // }
         }
     }
 
