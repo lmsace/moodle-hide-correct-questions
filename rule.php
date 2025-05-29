@@ -112,6 +112,12 @@ class quizaccess_hidecorrect extends access_rule_base {
         return $attempt;
     }
 
+    /**
+     * Clean up the session for the given attempt id.
+     *
+     * @param int|null $attemptid The attempt ID to clean up from session.
+     * @return void
+     */
     public function clean_up_session($attemptid = null) {
         global $SESSION;
 
@@ -191,7 +197,7 @@ class quizaccess_hidecorrect extends access_rule_base {
 
         $completedquestions = []; $pendingquestions = [];
         foreach ($attemptobj->get_slots() as $slot) {
-            $state = $quba->get_question_state_string($slot, true);
+            $state = $quba->get_question_state($slot, true);
             if ($hidecorrect == self::PARTIAL) {
                 if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
                     || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
@@ -270,7 +276,7 @@ class quizaccess_hidecorrect extends access_rule_base {
         $uniqueid = $attemptobj->get_attempt()->uniqueid;
         $PAGE->requires->js_call_amd('quizaccess_hidecorrect/hidecorrect', 'init',  [$completed, $uniqueid, $completedquestions]);
 
-        $this->generate_dynamic_css($completed, $uniqueid);
+        $this->generate_dynamic_css($completed, $uniqueid, $completedquestions);
 
         $this->clean_up_session($attemptid);
 
@@ -291,9 +297,7 @@ class quizaccess_hidecorrect extends access_rule_base {
         if (empty($slots)) {
             $slots = $quba->get_slots();
         }
-
-        $completed = $completedquestions = [];
-
+        $completed = [];
         // Hide partially correct questions.
         $hidecorrect = $this->quiz->{"hidecorrect"} ?? self::ENABLE;
         if (!empty($slots)) {
@@ -305,12 +309,10 @@ class quizaccess_hidecorrect extends access_rule_base {
                     if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
                         || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
                         $completed[] = $slot;
-                        $completedquestions[] = $quba->get_question($slot)->id;
                     }
                 } else {
                     if ($state == question_state::$mangrright || $state == question_state::$gradedright) {
                         $completed[] = $slot;
-                        $completedquestions[] = $quba->get_question($slot)->id;
                     }
                 }
             }
@@ -324,12 +326,20 @@ class quizaccess_hidecorrect extends access_rule_base {
     /**
      * Generate the dynamic css for correctly anserwed questions to hide.
      *
-     * @param array $completed
-     * @param string $uniqueid
+     * @param array $completed List of completed question ids in this page.
+     * @param string $uniqueid Unique identifier for the question usage.
+     * @param array $completedquestions List of completed questions in entire quiz.
      * @return void
      */
-    public function generate_dynamic_css($completed, $uniqueid) {
+    public function generate_dynamic_css($completed, $uniqueid, $completedquestions = []) {
         global $CFG;
+
+        // Include the css only if there are any completed questions, hide them in the question navigation panel.
+        if (!empty($completedquestions)) {
+            $rules = '.qnbutton#quiznavbutton' . implode(', .qnbutton#quiznavbutton', $completedquestions) . ' { display: none; }';
+            $style = "section#mod_quiz_navblock { $rules }";
+            $CFG->additionalhtmltopofbody .= \html_writer::tag('style', $style);
+        }
 
         if (empty($completed)) {
             return false;
