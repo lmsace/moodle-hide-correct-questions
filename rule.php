@@ -59,6 +59,14 @@ class quizaccess_hidecorrect extends access_rule_base {
      * @return mixed
      */
     public static function make(quiz_settings $quizobj, $timenow, $canignoretimelimits) {
+        global $SESSION;
+
+        // When the user try to go back to previous page, then store the attempt id and this page number.
+        if (optional_param('previous', false, PARAM_BOOL)) {
+            $attemptid = optional_param('attempt', 0, PARAM_INT);
+            $thispage = optional_param('thispage', 0, PARAM_INT);
+            $SESSION->quizaccess_hidecorrect_previous[] = ['attemptid' => $attemptid, 'thispage' => $thispage];
+        }
 
         // This access rule only works, if the Each attempt builds on the last is configured yes.
         if (!isset($quizobj->get_quiz()->attemptonlast) || !$quizobj->get_quiz()->attemptonlast) {
@@ -104,6 +112,47 @@ class quizaccess_hidecorrect extends access_rule_base {
         return $attempt;
     }
 
+    public function clean_up_session($attemptid = null) {
+        global $SESSION;
+
+        if (isset($SESSION->quizaccess_hidecorrect_previous) && $attemptid) {
+            $list = $SESSION->quizaccess_hidecorrect_previous;
+            $index = array_search($attemptid, array_column($list, 'attemptid'));
+            if ($index !== false) {
+                unset($list[$index]);
+                $SESSION->quizaccess_hidecorrect_previous = array_values($list);
+            }
+        }
+
+    }
+
+    /**
+     * Check if the session has a previous page stored for the given attempt.
+     *
+     * @param int $attemptid The attempt ID to check.
+     * @return bool True if session has previous page info for this attempt, false otherwise.
+     */
+    public function has_previous_in_session($attemptid) {
+        global $SESSION;
+
+        if (empty($SESSION->quizaccess_hidecorrect_previous)) {
+            return false;
+        }
+
+        $list = $SESSION->quizaccess_hidecorrect_previous;
+
+        // If stored as an array of arrays.
+        if (!empty($list)) {
+            foreach ($list as $entry) {
+                if (isset($entry['attemptid']) && $entry['attemptid'] == $attemptid) {
+                    return $entry['thispage'] ?? false;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Find the list of correclty answered questions from previous answers and generate the
      * dynamic css rules and append them into body.
@@ -114,7 +163,10 @@ class quizaccess_hidecorrect extends access_rule_base {
     public function get_correct_questions_fromprevious($PAGE) {
 
         $lastattempt = $this->user_last_finished_attempt();
+
         if (!$lastattempt) {
+
+            $this->clean_up_session(optional_param('attempt', 0, PARAM_INT));
             return false;
         }
 
@@ -137,45 +189,80 @@ class quizaccess_hidecorrect extends access_rule_base {
         // Hide partially correct questions.
         $hidecorrect = $this->quiz->{"hidecorrect"} ?? self::ENABLE;
 
-        $completedquestions = [];
+        $completedquestions = []; $pendingquestions = [];
         foreach ($attemptobj->get_slots() as $slot) {
             $state = $quba->get_question_state_string($slot, true);
             if ($hidecorrect == self::PARTIAL) {
                 if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
                     || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
                     $completedquestions[] = $slot;
+                } else {
+                    $pendingquestions[] = $slot;
                 }
             } else {
                 if ($state == question_state::$mangrright || $state == question_state::$gradedright) {
                     $completedquestions[] = $slot;
+                } else {
+                    $pendingquestions[] = $slot;
                 }
             }
         }
 
         // Redirect to next page, when the questions in the current page is answered and this page is not last page.
         if (!$hasincompletequestions) {
+
             $attemptobj->set_currentpage($page);
 
             // Find the next page that contains any incomplete questions.
             $totalpages = $attemptobj->get_num_pages();
             $nextpage = null;
-            for ($p = $page + 1; $p < $totalpages; $p++) {
-                $hasincomplete = $this->is_page_has_incomplete_questions($p, $attemptobj, $quba)[0];
-                if ($hasincomplete) {
-                    $nextpage = new \moodle_url('/mod/quiz/attempt.php', [
-                        'attempt' => $attemptid,
-                        'cmid' => $this->quizobj->get_cmid(),
-                        'page' => $p,
-                    ]);
-                    break;
+
+            // Check the user tried to go back to previous page.
+            if ($thispage = $this->has_previous_in_session($attemptid)) {
+
+                for ($p = $page - 1; $p >= 0; $p--) {
+                    $hasincomplete = $this->is_page_has_incomplete_questions($p, $attemptobj, $quba)[0];
+                    if ($hasincomplete) {
+                        $nextpage = new \moodle_url('/mod/quiz/attempt.php', [
+                            'attempt' => $attemptid,
+                            'cmid' => $this->quizobj->get_cmid(),
+                            'page' => $p,
+                        ]);
+                        break;
+                    }
+
+                    $attemptobj->set_currentpage($p);
                 }
-                $attemptobj->set_currentpage($p);
+
+            } else {
+
+                // Find the next page with incomplete questions.
+                for ($p = $page + 1; $p < $totalpages; $p++) {
+                    $hasincomplete = $this->is_page_has_incomplete_questions($p, $attemptobj, $quba)[0];
+                    if ($hasincomplete) {
+                        $nextpage = new \moodle_url('/mod/quiz/attempt.php', [
+                            'attempt' => $attemptid,
+                            'cmid' => $this->quizobj->get_cmid(),
+                            'page' => $p,
+                        ]);
+                        break;
+                    }
+                    $attemptobj->set_currentpage($p);
+                }
             }
 
             if (is_null($nextpage)) {
+                if ($pendingquestions) {
+                    $slotpage = $attemptobj->get_question_page(reset($pendingquestions));
+                    $attemptobj->set_currentpage($slotpage);
+                }
                 // If there is no next page with incomplete questions, redirect to the summary page.
                 $nextpage = $attemptobj->summary_url();
             }
+
+
+            $this->clean_up_session($attemptid);
+
             // Redirect to the next page.
             redirect($nextpage);
         }
@@ -184,6 +271,9 @@ class quizaccess_hidecorrect extends access_rule_base {
         $PAGE->requires->js_call_amd('quizaccess_hidecorrect/hidecorrect', 'init',  [$completed, $uniqueid, $completedquestions]);
 
         $this->generate_dynamic_css($completed, $uniqueid);
+
+        $this->clean_up_session($attemptid);
+
     }
 
     /**
