@@ -16,9 +16,10 @@ This ensures students only focus on revisiting and reattempting questions they h
 
 ### Version
 
-Plugin version: 3.0
-Released on: 14 JUNE 2023
-Upgraded on: 30 MAY 2025
+- Plugin version: 3.0
+- Released on: 14 JUNE 2023
+- Upgraded on: 30 MAY 2025
+
 Authors: https://lmsace.com, LMSACE Dev Team
 
 ### Git Repository
