@@ -18,8 +18,7 @@
  * Mobile output class for Quiz access hide correct questions.
  *
  * @package    quizaccess_hidecorrect
- * @subpackage hidecorrect
- * @copyright  2023 LMSACE Dev Team.
+ * @copyright  2023 LMSACE Dev Team <lmsace.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

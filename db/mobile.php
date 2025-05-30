@@ -18,14 +18,14 @@
  * Quiz access hide correct questions - provide mobile support.
  *
  * @package    quizaccess_hidecorrect
- * @subpackage hidecorrect
- * @copyright  2023 LMSACE Dev Team.
+ * @copyright  2023 LMSACE Dev Team <lmsace.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $addons = [
+
     "quizaccess_hidecorrect" => [
         "handlers" => [
             "hidecorrect" => [
