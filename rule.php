@@ -266,7 +266,6 @@ class quizaccess_hidecorrect extends access_rule_base {
                 $nextpage = $attemptobj->summary_url();
             }
 
-
             $this->clean_up_session($attemptid);
 
             // Redirect to the next page.
@@ -367,7 +366,7 @@ class quizaccess_hidecorrect extends access_rule_base {
         $options = [
             self::DISABLE => get_string('disable'),
             self::ENABLE => get_string('hidecorrectenable', 'quizaccess_hidecorrect'),
-            self::PARTIAL => get_string('hidepartiallycorrect', 'quizaccess_hidecorrect')
+            self::PARTIAL => get_string('hidepartiallycorrect', 'quizaccess_hidecorrect'),
         ];
         $mform->addElement('select', 'hidecorrect', get_string('hidecorrect', 'quizaccess_hidecorrect'), $options);
         $mform->addHelpButton('hidecorrect', 'hidecorrect', 'quizaccess_hidecorrect');
@@ -385,7 +384,8 @@ class quizaccess_hidecorrect extends access_rule_base {
             self::DISABLE => get_string('disable'),
             self::ENABLE => get_string('preventreattemptenable', 'quizaccess_hidecorrect'),
         ];
-        $mform->addElement('select', 'hidecorrect_prevent_reattempt', get_string("preventreattempt", "quizaccess_hidecorrect"), $options);
+        $mform->addElement('select', 'hidecorrect_prevent_reattempt',
+            get_string("preventreattempt", "quizaccess_hidecorrect"), $options);
         $mform->addHelpButton('hidecorrect_prevent_reattempt', 'preventreattempt', 'quizaccess_hidecorrect');
         $mform->hideIf('hidecorrect_autograde', 'hidecorrect', 'eq', self::DISABLE);
 
@@ -501,72 +501,71 @@ class quizaccess_hidecorrect extends access_rule_base {
 
             // Make the current attempt instance.
             $attemptobj = quiz_create_attempt_handling_errors($attemptid, $this->quizobj->get_cmid());
-            // Verify the attempt contains the manaual grading questions.
-            // if ($attemptobj->requires_manual_grading()) {
-                // Load question usage instance for current attempt.
-                $quba = question_engine::load_questions_usage_by_activity($attemptobj->get_attempt()->uniqueid);
-                // Load question usage instance for previous attempt.
-                $prevquba = question_engine::load_questions_usage_by_activity($lastattempt->uniqueid);
 
-                $attempthasmanualgrade = false;
-                foreach ($attemptobj->get_slots() as $slot) {
-                    $qa = $quba->get_question_attempt($slot);
-                    // Verify the question needs to be grade and it doesn't changed from previous attempt.
-                    // echo '<pre>'; print_r($qa);
-                    // $prevqstate = $prevquba->get_question_state($slot, true);
-                    // Get the previous question state.
-                    $prevqstate = $prevquba->get_question_state($slot, true);
+            // Load question usage instance for current attempt.
+            $quba = question_engine::load_questions_usage_by_activity($attemptobj->get_attempt()->uniqueid);
+            // Load question usage instance for previous attempt.
+            $prevquba = question_engine::load_questions_usage_by_activity($lastattempt->uniqueid);
 
-                    if (($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2)
-                        || $prevqstate == question_state::$mangrright) {
+            $attempthasmanualgrade = false;
+            foreach ($attemptobj->get_slots() as $slot) {
+                $qa = $quba->get_question_attempt($slot);
+                // Verify the question needs to be grade and it doesn't changed from previous attempt.
+                // echo '<pre>'; print_r($qa);
+                // $prevqstate = $prevquba->get_question_state($slot, true);
+                // Get the previous question state.
+                $prevqstate = $prevquba->get_question_state($slot, true);
 
-                        // Verifiy the hide partially correct questions has been graded automatically in the new attempt.
-                        $hidecorrect = $this->quiz->{"hidecorrect"};
-                        $result = false;
+                if (($qa->get_state() == question_state::$needsgrading && $qa->get_num_steps() == 2)
+                    || $prevqstate == question_state::$mangrright) {
 
-                        if ($hidecorrect == self::PARTIAL) {
-                            if ($prevqstate == question_state::$gradedright || $prevqstate == question_state::$mangrright
-                                || $prevqstate == question_state::$mangrpartial || $prevqstate == question_state::$gradedpartial) {
-                                $result = true;
-                            }
-                        } else {
-                            if ($prevqstate == question_state::$gradedright || $prevqstate == question_state::$mangrright) {
-                                $result = true;
-                            }
+                    // Verifiy the hide partially correct questions has been graded automatically in the new attempt.
+                    $hidecorrect = $this->quiz->{"hidecorrect"};
+                    $result = false;
+
+                    if ($hidecorrect == self::PARTIAL) {
+                        if ($prevqstate == question_state::$gradedright || $prevqstate == question_state::$mangrright
+                            || $prevqstate == question_state::$mangrpartial || $prevqstate == question_state::$gradedpartial) {
+                            $result = true;
                         }
-
-                        if ($result) {
-                            $comment = '';
-                            $prevgradeduser = '';
-                            $commentformat = '';
-                            $gradedmark = $prevquba->get_question_mark($slot); // Get grade of the question from previous attempt.
-                            $prevqa = $prevquba->get_question_attempt($slot); // Question attempt instance for this quetsion.
-
-                            foreach ($prevqa->get_step_iterator() as $step) {
-                                // Find the question is graded in previous attempt.
-                                if ($step->get_state()->is_commented()) {
-                                    $prevgradeduser = $step->get_user_id(); // Fetch the graded user.
-                                    $comment = $step->get_behaviour_var('comment'); // Fetch the comment for this question.
-                                    $commentformat = $step->get_behaviour_var('commentformat');
-                                }
-                            }
-
-                            if ($prevgradeduser) {
-                                $attempthasmanualgrade = true;
-                                // This is the qustion is graded in previous attempt.
-                                // Then now use the same grades and comments for this attempt.
-                                $qa->manual_grade($comment, $gradedmark, $commentformat, null, $prevgradeduser);
-                                $quba->get_observer()->notify_attempt_modified($qa); // Create a step for manual grade.
-                            }
+                    } else {
+                        if ($prevqstate == question_state::$gradedright || $prevqstate == question_state::$mangrright) {
+                            $result = true;
                         }
-
                     }
+
+                    if ($result) {
+                        $comment = '';
+                        $prevgradeduser = '';
+                        $commentformat = '';
+                        $gradedmark = $prevquba->get_question_mark($slot); // Get grade of the question from previous attempt.
+                        $prevqa = $prevquba->get_question_attempt($slot); // Question attempt instance for this quetsion.
+
+                        foreach ($prevqa->get_step_iterator() as $step) {
+                            // Find the question is graded in previous attempt.
+                            if ($step->get_state()->is_commented()) {
+                                $prevgradeduser = $step->get_user_id(); // Fetch the graded user.
+                                $comment = $step->get_behaviour_var('comment'); // Fetch the comment for this question.
+                                $commentformat = $step->get_behaviour_var('commentformat');
+                            }
+                        }
+
+                        if ($prevgradeduser) {
+                            $attempthasmanualgrade = true;
+                            // This is the qustion is graded in previous attempt.
+                            // Then now use the same grades and comments for this attempt.
+                            $qa->manual_grade($comment, $gradedmark, $commentformat, null, $prevgradeduser);
+                            $quba->get_observer()->notify_attempt_modified($qa); // Create a step for manual grade.
+                        }
+                    }
+
                 }
-                // Finish the grading, update the total mark for this attempt.
-                if ($attempthasmanualgrade) {
-                    $this->process_autograded_actions($quba, $attemptobj);
-                }
-            // }
+            }
+            // Finish the grading, update the total mark for this attempt.
+            if ($attempthasmanualgrade) {
+                $this->process_autograded_actions($quba, $attemptobj);
+            }
+
         }
     }
 
