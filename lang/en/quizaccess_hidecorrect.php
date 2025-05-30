@@ -35,3 +35,8 @@ $string['autograde'] = 'Questions auto-grade ';
 $string['autograde_help'] = 'Auto-grading applies the grades from the last attempt to correctly answered questions in the new attempt.';
 // ... Hide partially correct.
 $string['hidepartiallycorrect'] = 'Hide questions that have been correctly answered <b>AND</b> partially correctly answered in new attempts';
+// ... Prevent re-attempt.
+$string['preventreattempt'] = 'Prevent re-attempting the quiz';
+$string['preventreattempt_help'] = 'When enabled, prevents the user from re-attempting the quiz after all questions have been answered correctly in a previous attempt. This is useful to ensure that users do not retake the quiz unnecessarily.';
+$string['preventreattemptenable'] = 'Prevent re-attempting the quiz after all questions have been answered correctly';
+$string['questioncompletes'] = 'All questions have been answered correctly. You cannot attempt the quiz again.';

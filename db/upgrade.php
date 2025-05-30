@@ -47,5 +47,18 @@ function xmldb_quizaccess_hidecorrect_upgrade($oldversion) {
         }
         upgrade_plugin_savepoint(true, 2023091400, 'quizaccess', 'hidecorrect');
     }
+
+    // Add prevent_reattempt field to quizaccess_hidecorrect table.
+    if ($oldversion < 2025053000) {
+        $table = new xmldb_table('quizaccess_hidecorrect');
+        $field = new xmldb_field('prevent_reattempt', XMLDB_TYPE_INTEGER, 9, null, XMLDB_NOTNULL, null, 0, 'autograde');
+
+        // Conditionally launch add field prevent_reattempt.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2025053000, 'quizaccess', 'hidecorrect');
+    }
+
     return true;
 }

@@ -380,6 +380,15 @@ class quizaccess_hidecorrect extends access_rule_base {
         $mform->addHelpButton('hidecorrect_autograde', 'autograde', 'quizaccess_hidecorrect');
         $mform->hideIf('hidecorrect_autograde', 'hidecorrect', 'eq', self::DISABLE);
 
+        // Prevent re-attempt option.
+        $options = [
+            self::DISABLE => get_string('disable'),
+            self::ENABLE => get_string('preventreattemptenable', 'quizaccess_hidecorrect'),
+        ];
+        $mform->addElement('select', 'hidecorrect_prevent_reattempt', get_string("preventreattempt", "quizaccess_hidecorrect"), $options);
+        $mform->addHelpButton('hidecorrect_prevent_reattempt', 'preventreattempt', 'quizaccess_hidecorrect');
+        $mform->hideIf('hidecorrect_autograde', 'hidecorrect', 'eq', self::DISABLE);
+
     }
 
     /**
@@ -394,10 +403,12 @@ class quizaccess_hidecorrect extends access_rule_base {
         // Default values to false if hidecorrect property is undefined.
         $hidecorrect = $quiz->hidecorrect ?? false;
         $autograde = $quiz->hidecorrect_autograde ?? false;
+        $preventreattempt = $quiz->hidecorrect_prevent_reattempt ?? false;
 
         $data = (object) [
             'hidecorrect' => $hidecorrect,
             'autograde' => $autograde ?: 0,
+            'prevent_reattempt' => $preventreattempt ?: 0,
         ];
 
         if ($record = $DB->get_record('quizaccess_hidecorrect', ['quizid' => $quiz->id])) {
@@ -442,7 +453,7 @@ class quizaccess_hidecorrect extends access_rule_base {
      */
     public static function get_settings_sql($quizid) {
         return [
-            'hidecorrect, autograde as hidecorrect_autograde', // Select field.
+            'hidecorrect, autograde as hidecorrect_autograde, prevent_reattempt as hidecorrect_prevent_reattempt', // Select field.
             'LEFT JOIN {quizaccess_hidecorrect} hidecorrect ON hidecorrect.quizid = quiz.id', // Fetch join queyy.
             [], // Paramenters.
         ];
@@ -592,5 +603,59 @@ class quizaccess_hidecorrect extends access_rule_base {
         }
 
         $transaction->allow_commit();
+    }
+
+    /**
+     * Check if the user has completed all the questions in the quiz and
+     * prevent the user from starting a new attempt.
+     *
+     * @param int $numattempts Number of attempts made by the user.
+     * @param stdClass $lastattempt Last attempt object of the user.
+     * @return string|bool Returns an error message if access is prevented, otherwise false.
+     */
+    public function prevent_new_attempt($numattempts, $lastattempt) {
+        global $OUTPUT;
+
+        if ($numattempts == 0) {
+            return false;
+        }
+
+        // Hide partially correct questions.
+        $preventreattempt = $this->quiz->{"hidecorrect_prevent_reattempt"} ?? self::DISABLE;
+
+        // Hidecorrect method.
+        $hidecorrect = $this->quiz->{"hidecorrect"} ?? self::ENABLE;
+
+        if ($preventreattempt == self::DISABLE || $hidecorrect == self::DISABLE) {
+            return false;
+        }
+
+        // Load question usage instance for last attempt.
+        $quba = question_engine::load_questions_usage_by_activity($lastattempt->uniqueid);
+        $completedquestions = [];
+
+        // Find the list of completed questions in this last attempt.
+        foreach ($quba->get_slots() as $slot) {
+            $state = $quba->get_question_state($slot, true);
+            if ($hidecorrect == self::PARTIAL) {
+                if ($state == question_state::$gradedright || $state == question_state::$gradedpartial
+                    || $state == question_state::$mangrright || $state == question_state::$mangrpartial) {
+                    $completedquestions[] = $slot;
+                }
+            } else {
+                if ($state == question_state::$mangrright || $state == question_state::$gradedright) {
+                    $completedquestions[] = $slot;
+                }
+            }
+        }
+
+        // If the user has answered all the questions correctly in the last attempt.
+        if (count($quba->get_slots()) == count($completedquestions)) {
+            return $OUTPUT->render_from_template('core/notification_warning',
+                ['message' => get_string('questioncompletes', 'quizaccess_hidecorrect')]
+            );
+        }
+
+        return false;
     }
 }
